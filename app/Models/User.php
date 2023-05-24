@@ -42,4 +42,14 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function userRole()
+    {
+        return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id');
+    }
+
+    public function busBooking()
+    {
+        return $this->belongsToMany(ChairName::class, 'buses', 'user_id', 'chair_name_id');
+    }
 }
