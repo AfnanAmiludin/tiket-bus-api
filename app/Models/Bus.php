@@ -9,15 +9,14 @@ class Bus extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'chair_name_id',
-        'user_id'
+        'name',
+        'type',
+        'origin_destination',
+        'price'
     ];
-    public function chairName()
+
+    public function busChair()
     {
-        return $this->hasMany(ChairName::class, 'id');
-    }
-    public function user()
-    {
-        return $this->hasMany(User::class, 'id');
+        return $this->belongsToMany(ChairName::class, 'bus_chairs', 'buses_id', 'chair_name_id');
     }
 }

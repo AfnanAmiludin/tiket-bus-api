@@ -11,13 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('transactions', function (Blueprint $table) {
-            $table->id();
-            $table->uuid('midtrans_order_id');
-            $table->string('booking_code');
-            $table->string('total_payment');
-            $table->string('status');
-            $table->timestamps();
+        Schema::table('transactions', function (Blueprint $table) {
+            $table->unsignedBigInteger('bus_chairs_id');
+            $table->foreign('bus_chairs_id')->references('id')->on('bus_chairs')->cascadeOnDelete();
         });
     }
 
@@ -26,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('transactions');
+        Schema::table('transactions', function (Blueprint $table) {
+            $table->dropColumn('bus_chairs_id');
+        });
     }
 };

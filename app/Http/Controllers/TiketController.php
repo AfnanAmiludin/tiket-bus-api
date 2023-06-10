@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Bus;
 use App\Models\BusBooking;
+use App\Models\BusChair;
 use App\Models\ChairName;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\UserTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,82 +21,102 @@ class TiketController extends Controller
     {
         $user = Auth::user();
         $attribute = $request->validate([
-            'name' => ['required'],
-            'bank' => ['required']
+            'chairId' => ['required'],
+            'busId' => ['required'],
         ]);
-        $coba = 'aku bisa';
 
-        $findChair = ChairName::where('name', $attribute)->first();
-        if ($findChair->row_active) {
-            return response([
-                'message' => 'Kursi sudah di booking, harap memilih kursi yang lain!'
-            ]);
-        }
+        $findChairName = ChairName::where('id', $attribute['chairId'])->first();
+        $findBusName = Bus::where('id', $attribute['busId'])->first();
+        // dd($findBusName);
+        $rowActive = ChairName::find($findChairName->id)->busChair()->where('buses_id', $findBusName->id)->first();
+        $findBus = Bus::where('id', $attribute['busId'])->first();
 
-        try {
-            DB::beginTransaction();
-            $serverKey  = config('midtrans.key');
-            $orderId    = Str::uuid()->toString();
-            $grossAmount = $findChair->price;
+        if ($rowActive == false) {
+            try {
+                $serverKey  = config('midtrans.key');
+                $orderId    = Str::uuid()->toString();
 
-            $response = Http::withBasicAuth($serverKey, '')
-                ->post('https://api.sandbox.midtrans.com/v2/charge', [
-                    'payment_type'          => 'bank_transfer',
-                    'transaction_details'   => [
-                        'order_id'          => $orderId,
-                        'gross_amount'      => $grossAmount
-                    ],
-                    'bank_transfer'         => [
-                        'bank'              => $request->bank
-                    ],
-                    'customer_details'      => [
-                        'email'             => $user->email,
-                        'first_name'        => $user->name,
-                        'last_name'         => $user->name,
-                    ]
+                $grossAmount = $findBus->price;
+
+                $response = Http::withBasicAuth($serverKey, '')
+                    ->post('https://app.sandbox.midtrans.com/snap/v1/transactions', [
+                        'transaction_details'   => [
+                            'order_id'          => $orderId,
+                            'gross_amount'      => $grossAmount
+                        ],
+                        'customer_details'      => [
+                            'email'             => $user->email,
+                            'first_name'        => $user->name,
+                            'last_name'         => $user->name,
+                        ]
+                    ]);
+
+                if ($response->failed()) {
+                    return response()->json(['message' => 'failed charge'], 500);
+                }
+                $result = $response->json();
+
+                $busChair = BusChair::create([
+                    'buses_id' => $findBus->id,
+                    'chair_name_id' => $findChairName->id,
+                    'row_active' => true,
                 ]);
 
-            if ($response->failed()) {
-                return response()->json(['message' => 'failed charge'], 500);
-            }
-            $result = $response->json();
-            if ($result['status_code'] != '201') {
-                return response()->json(['message' => $result['status_message']], 500);
-            }
-            DB::table('transactions')->insert([
-                'id'                => $orderId,
-                'booking_code'      => Str::random(6),
-                'chair_names_id'    => $findChair->id,
-                'total_payment'     => $grossAmount,
-                'status'            => 'BOOKED',
-                'created_at'        => now(),
-                'updated_at'        => now()
-            ]);
+                $transaction = Transaction::create([
+                    'booking_code'      => Str::random(6),
+                    'total_payment'     => $grossAmount,
+                    'status'            => 'BOOKED',
+                    'bus_chairs_id'      => $busChair->id,
+                    'midtrans_order_id' => $orderId
+                ]);
 
-            $attribute['row_active'] = true;
-            $findChair->update($attribute);
+                UserTransaction::create([
+                    'user_id' => $user->id,
+                    'transactions_id' => $transaction->id
+                ]);
 
-            DB::commit();
-            return response()->json([
-                'data' => [
-                    'va' => $result['va_numbers'][0]['va_number']
-                ]
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => $e->getMessage()
-            ], 500);
+                return response()->json([$result]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'message' => $e->getMessage()
+                ], 500);
+            }
+        } else if (!$rowActive->row_active) {
+            return response([
+                'message' => 'Kursi sudah di booking, harap memilih kursi yang lain!'
+            ], 400);
         }
     }
     public function dataBooking()
     {
         $user = Auth::user()->id;
-        $dataBooking = User::find($user)->busBooking()->get();
-        return response([
-            'status' => 'SUCCES',
-            'message' => 'get data bookong succes',
-            'data' => $dataBooking
+        // $rowActive = ChairName::find($findChairName->id)->busChair()->where('buses_id', $findBusName->id)->first();
+        $history = User::find($user)->userTransaction()->get();
+        if ($history == null) {
+            return response()->json([]);
+        } else {
+            return response([
+                'status' => 'SUCCES',
+                'message' => 'get data bookong succes',
+                'data' => $history
+            ]);
+        }
+    }
+    public function delete(BusChair $bus)
+    {
+        // $user = Auth::user()->id;
+        // $userTransaction = UserTransaction::where('user_id', $user)->first();
+        // $transaction = Transaction::where('id', $userTransaction->transactions_id)->first();
+        $busChair = BusChair::where('id', $bus->id)->first();
+        // dd($bus->id);
+        $busChair->delete();
+        return "SUCCES";
+    }
+    public function getBus()
+    {
+        $data = BusChair::all();
+        return response()->json([
+            'data' => $data
         ]);
     }
 }

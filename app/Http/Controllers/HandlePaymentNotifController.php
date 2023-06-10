@@ -38,7 +38,7 @@ class HandlePaymentNotifController extends Controller
             'user_id' => 1
         ]);
 
-        $order = Transaction::find($orderId);
+        $order = Transaction::where('midtrans_order_id', $orderId)->first();
         if (!$order) {
             return response()->json([
                 'message' => 'invalid order'

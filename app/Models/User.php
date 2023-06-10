@@ -47,9 +47,8 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id');
     }
-
-    public function busBooking()
+    public function userTransaction()
     {
-        return $this->belongsToMany(ChairName::class, 'buses', 'user_id', 'chair_name_id');
+        return $this->belongsToMany(Transaction::class, 'user_transactions', 'user_id', 'transactions_id');
     }
 }

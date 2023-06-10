@@ -9,9 +9,16 @@ class Transaction extends Model
 {
     use HasFactory;
     protected $fillable = [
+        'id',
         'booking_code',
         'chair_names_id',
         'total_payment',
-        'status'
+        'status',
+        'bus_chairs_id',
+        'midtrans_order_id'
     ];
+    public function userTransaction()
+    {
+        return $this->belongsToMany(User::class, 'user_transactions', 'transactions_id', 'user_id');
+    }
 }

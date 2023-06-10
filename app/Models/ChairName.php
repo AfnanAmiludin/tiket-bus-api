@@ -13,13 +13,12 @@ class ChairName extends Model
         'name',
         'row_active'
     ];
-
     public function chairType()
     {
         return $this->hasMany(ChairType::class, 'id');
     }
-    public function busBooking()
+    public function busChair()
     {
-        return $this->belongsToMany(User::class, 'buses', 'chair_name_id', 'user_id');
+        return $this->belongsToMany(Bus::class, 'bus_chairs', 'chair_name_id', 'buses_id');
     }
 }

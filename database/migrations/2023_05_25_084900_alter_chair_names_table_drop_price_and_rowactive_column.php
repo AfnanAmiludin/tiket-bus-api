@@ -11,13 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('transactions', function (Blueprint $table) {
-            $table->id();
-            $table->uuid('midtrans_order_id');
-            $table->string('booking_code');
-            $table->string('total_payment');
-            $table->string('status');
-            $table->timestamps();
+        Schema::table('chair_names', function (Blueprint $table) {
+            $table->dropColumn('row_active');
+            $table->dropColumn('price');
         });
     }
 
@@ -26,6 +22,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('transactions');
+        Schema::table('chair_names', function (Blueprint $table) {
+            $table->string('price')->nullable();
+            $table->boolean('row_active')->default(false);
+        });
     }
 };
